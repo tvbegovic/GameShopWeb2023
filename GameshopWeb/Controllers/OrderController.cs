@@ -25,10 +25,21 @@ namespace GameshopWeb.Controllers
                 var tr = db.BeginTransaction();
                 try
                 {
-                    order.IdUser = db.ExecuteScalar<int>(
+                    if(order.User.Id > 0)
+                    {
+                        order.IdUser = order.User.Id;
+                        db.Execute(
+                            @"UPDATE [User] SET firstname = @firstname, lastname = @lastname,
+                                address = @address, city = @city WHERE id = @id", order.User,tr);
+                    }
+                    else
+                    {
+                        order.IdUser = db.ExecuteScalar<int>(
                         @"INSERT INTO [User] (firstname, lastname, address, email, City) OUTPUT inserted.id
-                        VALUES(@firstname, @lastname, @address, @email, @City)", order.User,tr
+                        VALUES(@firstname, @lastname, @address, @email, @City)", order.User, tr
                         );
+                    }
+                    
                     order.DateOrdered = DateTime.Now;
                     order.Id = db.ExecuteScalar<int>(
                         "INSERT INTO [Order](idUser, dateOrdered) OUTPUT inserted.id VALUES(@idUser, @dateOrdered)", order, tr
@@ -50,6 +61,25 @@ namespace GameshopWeb.Controllers
                     throw;
                 }
             
+            }
+        }
+
+        [HttpGet("forUser/{idUser}")]
+        public List<Order> GetOrdersForUser(int idUser)
+        {
+            using (var db = new SqlConnection(configuration.GetConnectionString("connString")))
+            {
+                var orders = db.Query<Order>(
+                    "SELECT * FROM [Order] WHERE idUser = @idUser", new { idUser }).ToList();
+                var orderIds = orders.Select(o => o.Id).ToList();
+                var details = db.Query<OrderDetail>(
+                    "SELECT * FROM OrderDetail WHERE idOrder IN @orderIds", new { orderIds }
+                    );
+                foreach(var order in orders)
+                {
+                    order.Details = details.Where(d => d.IdOrder == order.Id).ToList();
+                }
+                return orders;
             }
         }
     }

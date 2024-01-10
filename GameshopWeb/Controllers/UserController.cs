@@ -67,5 +67,47 @@ namespace GameshopWeb.Controllers
 
             smtpClient.Send(mailMessage);
         }
+
+        [HttpGet("login")]
+        public IActionResult Login(string email, string password)
+        {
+            using(var db = new SqlConnection(configuration.GetConnectionString("connString")))
+            {
+                var user = db.QueryFirstOrDefault<User>(
+                    "SELECT * FROM [user] WHERE email = @email AND password = @password",
+                    new { email, password });
+                if (user == null)
+                {
+                    return BadRequest("Invalid login or password");
+                }
+                var loginResult = new LoginResult();
+                loginResult.User = user;
+                return Ok(loginResult);
+            }
+        }
+
+        [HttpPut("")]
+        public IActionResult Update(User user)
+        {
+            if (string.IsNullOrEmpty(user.Firstname) || string.IsNullOrEmpty(user.Lastname) ||
+                string.IsNullOrEmpty(user.Email) || string.IsNullOrEmpty(user.Password))
+            {
+                return BadRequest("Ime, prezime, email i lozinka moraju biti zadani");
+            }
+            using (var db = new SqlConnection(configuration.GetConnectionString("connString")))
+            {
+                db.Execute(
+                            @"UPDATE [User] SET firstname = @firstname, lastname = @lastname,
+                                address = @address, city = @city WHERE id = @id", user);
+                return Ok();
+            }
+        }
+    }
+
+    public class LoginResult
+    {
+        public User User { get; set; }
+        public string AccessToken { get; set; }
+        public string RefreshToken { get; set; }
     }
 }
