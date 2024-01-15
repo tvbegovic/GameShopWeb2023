@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Data.SqlClient;
 using System.Net;
 using System.Net.Mail;
+using GameshopWeb.JWT;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GameshopWeb.Controllers
 {
@@ -12,10 +15,12 @@ namespace GameshopWeb.Controllers
     public class UserController : ControllerBase
     {
         private readonly IConfiguration configuration;
+        private readonly IJwtAuthManager jwtAuthManager;
 
-        public UserController(IConfiguration configuration)
+        public UserController(IConfiguration configuration, IJwtAuthManager jwtAuthManager)
         {
             this.configuration = configuration;
+            this.jwtAuthManager = jwtAuthManager;
         }
 
         [HttpPost("register")]
@@ -80,13 +85,18 @@ namespace GameshopWeb.Controllers
                 {
                     return BadRequest("Invalid login or password");
                 }
+                var claims = new Claim[] { new Claim(ClaimTypes.Email, email) };
+                var jwtAuthresult = jwtAuthManager.GenerateTokens(email, claims, DateTime.Now);
                 var loginResult = new LoginResult();
                 loginResult.User = user;
+                loginResult.AccessToken = jwtAuthresult.AccessToken;
+                loginResult.RefreshToken = jwtAuthresult.RefreshToken.TokenString;
                 return Ok(loginResult);
             }
         }
 
         [HttpPut("")]
+        [Authorize]
         public IActionResult Update(User user)
         {
             if (string.IsNullOrEmpty(user.Firstname) || string.IsNullOrEmpty(user.Lastname) ||

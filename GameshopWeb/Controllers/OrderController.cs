@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Data.SqlClient;
@@ -65,6 +66,7 @@ namespace GameshopWeb.Controllers
         }
 
         [HttpGet("forUser/{idUser}")]
+        [Authorize]
         public List<Order> GetOrdersForUser(int idUser)
         {
             using (var db = new SqlConnection(configuration.GetConnectionString("connString")))
